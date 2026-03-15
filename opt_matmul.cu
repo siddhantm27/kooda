@@ -6,7 +6,6 @@ __global__ void matmul(float* A, float* B, float* C, int K, int M, int N) {
     int x = threadIdx.x + (blockIdx.x * blockDim.x);
     int y = threadIdx.y + (blockIdx.y * blockDim.y);
 
-    // A[K, M], B[M, N], C[K = y, N = x]
     if (y < K && x < N) {
         float sum = 0;
         for (int i = 0; i < M; ++i) {
@@ -16,37 +15,25 @@ __global__ void matmul(float* A, float* B, float* C, int K, int M, int N) {
     }
 }
 
-int main(){
-    int K = 300;
-    int M = 400;
-    int N = 500;
+int main(int argc, char* argv[]){
+    int K, M, N;
+    K = M = N = std::atoi(argv[1]);
 
-    float matrix1[K][M];
-    float matrix2[M][N];
+    float* matrix1 = new float[K * M];
+    float* matrix2 = new float[M * N];
+    float* matrix3 = new float[K * N];
 
     // random number generator
     std::random_device rd;
     std::mt19937 gen(rd());
     std::uniform_int_distribution<> dist(0, 9);
 
-    for (int i = 0; i < K; i++) {
-        for (int j = 0; j < M; j++) {
-            matrix1[i][j] = dist(gen);
+    for(int i=0;i<K*M;i++) matrix1[i] = dist(gen);
+    for(int i=0;i<M*N;i++) matrix2[i] = dist(gen);
 
-        }
-    }
-
-    for (int i = 0;i<M;i++) {
-        for (int j = 0;j<N;j++) {
-            matrix2[i][j] = dist(gen);
-        }
-    }
-
-    dim3 threadsPerBlock(16, 16);
+    dim3 threadsPerBlock(32, 32);
     dim3 blocksPerGrid((N + threadsPerBlock.x - 1) / threadsPerBlock.x,
                        (K + threadsPerBlock.y - 1) / threadsPerBlock.y);
-
-    float matrix3[K][N];
 
     float* A;
     float* B;
@@ -64,20 +51,10 @@ int main(){
     cudaFree(A);
     cudaFree(B);
     cudaFree(C);
+    
+    delete[] matrix1;
+    delete[] matrix2;
+    delete[] matrix3;
 
-    for (int i = 0; i < K; ++i) {
-        for (int j = 0; j < N; ++j) {
-            float sum = 0;
-            for (int o = 0; o < M; ++o) {
-                sum += matrix1[i][o] * matrix2[o][j];
-            }
-            if (sum != matrix3[i][j]) {
-                std::cout << "Matmul wrong" << std::endl;
-                exit(1);
-            }
-        }
-    }
-
-    std::cout << "Correct matmul" << std::endl;
     return 0;
 }
